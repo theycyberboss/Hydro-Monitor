@@ -1,19 +1,15 @@
-﻿/*Begining of Auto generated code by Atmel studio */
-#include <Arduino.h>
+﻿#include <Arduino.h>
 
-/*End of auto generated code by Atmel studio */
-
-  #include <Wire.h>
+#include <Wire.h>
 #include <LiquidCrystal_I2C.h>
-//Beginning of Auto generated function prototypes by Atmel Studio
+
+
 String readDataBytes();
 void printError(int errorCode);
 void printToDisplay();
 void parseData(String data);
 void checkReadings();
-//End of Auto generated function prototypes by Atmel Studio
-
-
+void initDisplay();
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
@@ -34,9 +30,10 @@ const float TEMP_OPTIMAL = 20.0f;
 const float PH_OPTIMAL = 7.0f;
 const float CONDUCT_OPTIMAL = 1200.0f;
 
+const int SYNCH_PIN = 8;
+
 //Actual sensor readings
 float temp,ph,conductivity;
-float lastConductivityReading;
 
 //boolean for each sensor
 bool ph_high, ph_normal, ph_low; //May be removed in the final program
@@ -52,30 +49,17 @@ String cond_state_string = "BOOT";
 
 bool readingData = true;
 bool synchError = false;
-int initReadTime = 18;
-int readTime = initReadTime;
+
+String currentError;
+String data;
 
 
-
-
-
-String currentError = "";
-String data = "";
-
-int screenState = 0;
-int changeScreenTimer = 6;
-int timer = changeScreenTimer;
-
-const int SYNCH_PIN = 8;
 
 void setup() {
 
   pinMode(SYNCH_PIN,OUTPUT);
-
-  lcd.begin();
-  lcd.backlight();
-  lcd.setCursor(0,0);
-  lcd.print("Starting Monitor");
+  
+  initDisplay();
   
   Serial.begin(9600);
 }
@@ -103,28 +87,37 @@ void loop() {
    digitalWrite(SYNCH_PIN,LOW);
 }
 
+void initDisplay()
+{
+	lcd.begin();
+	lcd.backlight();
+	lcd.setCursor(0,0);
+	lcd.print("Starting Monitor");
+	
+}
 
 //Read in the incoming data as charecters and convert them into a string
 String readDataBytes()
 {
     String readData = "";
 
-      while(readingData){
+	while(readingData){
       char charecter =  Serial.read();
-        readData += charecter;
-
-        if(charecter == '#') //The # is used to tell that it is the end of the 'packet' of data
-        {
-          readingData = false;
-          synchError = false;
+      readData += charecter;
+	  
+      if(charecter == '#') //The # is used to tell that it is the end of the 'packet' of data
+	  {
+		readingData = false;
+        synchError = false;
           
-        }
-  		  digitalWrite(SYNCH_PIN,HIGH);
       }
-
-      Serial.println(readData);
-    
+  	
+	  digitalWrite(SYNCH_PIN,HIGH);
+		
+	} 
+	   
     digitalWrite(SYNCH_PIN,LOW);
+	
     Serial.flush();
     return readData.substring(0,readData.length()-1);
     
@@ -159,8 +152,6 @@ void printError(int errorCode)
 
 void printToDisplay()
 {
-  //timer --;
-
   //Convert all of readings into a printable string
   String sTemp = "TEMP: " + String(temp) + " " + temp_state_string;
   String sPh = "PH: " + String(ph) +  " " + ph_state_string;
@@ -170,7 +161,7 @@ void printToDisplay()
   lcd.clear();
 
 
-  //Print out the tempeture and the conductivity 
+  //Print out the temperature and the conductivity 
   lcd.setCursor(0,0);
   lcd.print(sTemp);
 
@@ -193,7 +184,6 @@ void parseData(String data)
   }else if(data.startsWith("$1:"))
   {
     conductivity = data.substring(3).toFloat();
-    lastConductivityReading = conductivity;
   }
 
   //Used to check if their was a reading error sent from the slave arduino. 
@@ -225,6 +215,8 @@ void checkReadings()
   
   /////////////
   //Ph Readings
+  
+  /*
   if(ph <= (PH_OPTIMAL + PH_THREASHOLD) && ph >= (PH_OPTIMAL - PH_THREASHOLD)) // Check for normal temp
   {
     ph_state = 1;
@@ -238,6 +230,7 @@ void checkReadings()
     ph_state = 0;
     ph_state_string = "HIGH";
   }
+  */
  
 
   ///////////////// 
